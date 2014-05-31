@@ -66,7 +66,9 @@ int main(int argc, char **argv)
 			case gettingMaster:
 				if(responses.size() == size-1) {
 					responses.clean();
-					myRoom = getRoom(); // dodaje do własnej kolejki i wysyła żądania do wszystkich innych
+					//myRoom = getRoom(); // dodaje do własnej kolejki i wysyła żądania do wszystkich innych
+					myRoom = rand()%roomsNum;
+					roomsQ[myRoom].push(P(lecturesDone, tid));
 					stan=gettingRoom;
 				}
 				break;
@@ -132,7 +134,7 @@ int main(int argc, char **argv)
 		
 		
 		// ODBIOR RESPONSOW
-		MPI_iRecv(&msg1, 1, MPI_INT, MPI_ANY_SOURCE, RESPONSE_TAG, MPI_COMM_WORLD, &request);
+		MPI_Irecv(&msg1, 1, MPI_INT, MPI_ANY_SOURCE, RESPONSE_TAG, MPI_COMM_WORLD, &request);
 		//printf("Otrzymalem %d %d od %d, WARTOSC = %d\n", msg[0], msg[1], status.MPI_SOURCE, msg[2]);
 		MPI_Test(&request, &flag, &status);
 		
@@ -141,7 +143,7 @@ int main(int argc, char **argv)
 		}
 		
 		// ODBIOR RELEASOW
-		MPI_iRecv(msg5, 1, MPI_INT, MPI_ANY_SOURCE, RELEASE_TAG, MPI_COMM_WORLD, &request);
+		MPI_Irecv(msg5, 1, MPI_INT, MPI_ANY_SOURCE, RELEASE_TAG, MPI_COMM_WORLD, &request);
 		//printf("Otrzymalem %d %d od %d, WARTOSC = %d\n", msg[0], msg[1], status.MPI_SOURCE, msg[2]);
 		MPI_Test(&request, &flag, &status);
 		
@@ -170,7 +172,10 @@ int getMaster(){
 
 
 int getRoom(){
+	/*
 	int myRoom = rand()%roomsNum;
 	roomsQ[myRoom].push(P(lecturesDone, tid));
 	return myRoom;
+	*/
+	return -1;
 }
