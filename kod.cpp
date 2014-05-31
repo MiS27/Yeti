@@ -152,7 +152,7 @@ int main(int argc, char **argv)
 				if(stan==gettingRoom)
 					responses.insert(status.MPI_SOURCE);
 				// usuwanie z kolejki:, może się przydać timestamp
-				roomsQ.erase(P(msg5[2],status.MPI_SOURCE));
+				roomsQ[msg5[0]].erase(P(msg5[2],status.MPI_SOURCE));
 			}
 		}
 		
