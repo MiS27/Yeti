@@ -21,7 +21,6 @@ int getRoom();
 
 int main(int argc, char **argv)
 {
-	srand(time(NULL)+tid);
 	int mastersNum, roomsNum;
 	mastersNum = 10;
 	roomsNum = 10;
@@ -54,6 +53,7 @@ int main(int argc, char **argv)
 	int msg5[5];	// <0 Master/1 Room><zasób><timestamp><moc><version>
 		
 		
+	srand(time(NULL)+tid);
 	while(1){
 		
 		switch(stan){
@@ -65,24 +65,24 @@ int main(int argc, char **argv)
 				break;
 			case gettingMaster:
 				if(responses.size() == size-1) {
-					responses.clean();
+					responses.clear();
 					//myRoom = getRoom(); // dodaje do własnej kolejki i wysyła żądania do wszystkich innych
 					myRoom = rand()%roomsNum;
-					roomsQ[myRoom].push(P(lecturesDone, tid));
+					roomsQ[myRoom].insert(P(lecturesDone, tid));
 					stan=gettingRoom;
 				}
 				break;
 			case gettingRoom:
 				if(responses.size() == size-1) {
-					responses.clean();
-					lectureEnd=time() + 3;
+					responses.clear();
+					lectureEnd=time(NULL) + 3;
 					stan=lecture;
 					cout<<"lecture room:"<<myRoom<<" tid: "<<tid<<endl;
 				}
 				break;
 			case lecture:
 				// TODO
-				if(time()>=lectureEnd) {
+				if(time(NULL)>=lectureEnd) {
 					cout<<"lecture done room:"<<myRoom<<" tid: "<<tid<<endl;
 					roomsQ[myRoom].erase(P(myRoom,lecturesDone));
 					msg5[0]=1;
@@ -125,7 +125,7 @@ int main(int argc, char **argv)
 			}
 			
 			// dodaj do kolejki
-			roomsQ[msg2[0]].push(P(msg2[1], status.MPI_SOURCE));
+			roomsQ[msg2[0]].insert(P(msg2[1], status.MPI_SOURCE));
 
 //			MPI_Send( msg, 3, MPI_INT, (tid+1)%size, MSG_TAG, MPI_COMM_WORLD );
 			//printf("Wyslalem %d %d, WARTOSC = %d\n", msg[0], msg[1], msg[2]);
@@ -152,7 +152,7 @@ int main(int argc, char **argv)
 				if(stan==gettingRoom)
 					responses.insert(status.MPI_SOURCE);
 				// usuwanie z kolejki:, może się przydać timestamp
-				roomsQ.erase(P(msg[2],status.MPI_SOURCE));
+				roomsQ.erase(P(msg5[2],status.MPI_SOURCE));
 			}
 		}
 		
@@ -174,7 +174,7 @@ int getMaster(){
 int getRoom(){
 	/*
 	int myRoom = rand()%roomsNum;
-	roomsQ[myRoom].push(P(lecturesDone, tid));
+	roomsQ[myRoom].insert(P(lecturesDone, tid));
 	return myRoom;
 	*/
 	return -1;
