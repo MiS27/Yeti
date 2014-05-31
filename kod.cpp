@@ -100,7 +100,7 @@ int main(int argc, char **argv)
 		
 		
 		// OBSLUGA REQUESTA
-		MPI_iRecv(msg2, 2, MPI_INT, MPI_ANY_SOURCE, REQUEST_ROOM_TAG, MPI_COMM_WORLD, &request);
+		MPI_Irecv(msg2, 2, MPI_INT, MPI_ANY_SOURCE, REQUEST_ROOM_TAG, MPI_COMM_WORLD, &request);
 		//printf("Otrzymalem %d %d od %d, WARTOSC = %d\n", msg[0], msg[1], status.MPI_SOURCE, msg[2]);
 		MPI_Test(&request, &flag, &status);
 		
