@@ -6,6 +6,7 @@
 #include <set>
 #include <queue>
 #include <cstdlib>
+#include <iostream>
 #define RESPONSE_TAG 100
 #define	REQUEST_MASTER_TAG 101
 #define	REQUEST_ROOM_TAG 102
@@ -44,9 +45,10 @@ int main(int argc, char **argv)
 	MPI_Comm_rank( MPI_COMM_WORLD, &tid );
 	//printf("My id is %d from %d\n",tid, size);
 
+	cout<<"Id: "<<tid<<" from "<<size<<endl;
 	enum {vacant, gettingMaster, gettingRoom, lecture, meditate} stan;
 	int myMaster=-1, myRoom=-1;
-    long lectureEnd;
+	long lectureEnd;
     
 	int msg2[2];	// <zasób><timestamp>
 	int msg1;
@@ -55,20 +57,28 @@ int main(int argc, char **argv)
 		
 	srand(time(NULL)+tid);
 	while(1){
+	
 		
 		switch(stan){
 			case vacant:
 				//myMaster = getMaster();	// dodaje do własnej kolejki i wysyła żądania do wszystkich innych
 // TUTAJ->>>	//stan=gettingMaster;
-				stan = gettingRoom;
-				myRoom = getRoom(); // dodaje do własnej kolejki i wysyła żądania do wszystkich innych
+				//myRoom = getRoom(); // dodaje do własnej kolejki i wysyła żądania do wszystkich innych
+				myRoom = rand()%roomsNum;
+				roomsQ[myRoom].insert(P(lecturesDone, tid));
+				cout<<tid<<": MyRoom: "<<myRoom<<endl;
+				msg2[0]=myRoom;
+				msg2[1]=lecturesDone;
+				for(int i=0; i<size; i++)
+					if(i!=tid)
+						MPI_Send(&msg2, 2, MPI_INT, i, REQUEST_ROOM_TAG, MPI_COMM_WORLD );
+
+				stan=gettingRoom;
 				break;
 			case gettingMaster:
 				if(responses.size() == size-1) {
 					responses.clear();
 					//myRoom = getRoom(); // dodaje do własnej kolejki i wysyła żądania do wszystkich innych
-					myRoom = rand()%roomsNum;
-					roomsQ[myRoom].insert(P(lecturesDone, tid));
 					stan=gettingRoom;
 				}
 				break;
@@ -77,20 +87,24 @@ int main(int argc, char **argv)
 					responses.clear();
 					lectureEnd=time(NULL) + 3;
 					stan=lecture;
-					cout<<"lecture room:"<<myRoom<<" tid: "<<tid<<endl;
+					cout<<tid<<": lecture room:"<<myRoom<<endl;
 				}
+			/*	
+				else
+					cout<<"responses: "<<responses.size()<<endl;
+			*/	
 				break;
 			case lecture:
 				// TODO
 				if(time(NULL)>=lectureEnd) {
-					cout<<"lecture done room:"<<myRoom<<" tid: "<<tid<<endl;
+					cout<<tid<<": lecture done room:"<<myRoom<<endl;
 					roomsQ[myRoom].erase(P(myRoom,lecturesDone));
 					msg5[0]=1;
 					msg5[1]=myRoom;
 					msg5[2]=lecturesDone;
 					for(int i=0; i<size; i++)
 						if(i!=tid)
-							MPI_Send(&msg5, 1, MPI_INT, i, RELEASE_TAG, MPI_COMM_WORLD );
+							MPI_Send(&msg5, 5, MPI_INT, i, RELEASE_TAG, MPI_COMM_WORLD );
 					lecturesDone++;
 					stan=vacant;
 				}
@@ -107,6 +121,7 @@ int main(int argc, char **argv)
 		MPI_Test(&request, &flag, &status);
 		
 		if(flag){				
+			cout<<tid<<": REQUEST from "<<status.MPI_SOURCE<<" about "<<msg2[0]<<" "<<msg2[1]<<endl;
 			if(msg2[0]==myRoom && stan==gettingRoom){
 				// odeślij znacznik czasowy
 				//jeżeli tamten lepszy, to sygnał wolny -1
@@ -115,13 +130,16 @@ int main(int argc, char **argv)
 				//msg1 = lecturesDone;
 				//MPI_Send(&msg1, 1, MPI_INT, status.MPI_SOURCE, RESPONSE_TAG, MPI_COMM_WORLD );
 				msg1=-1;
-				if(msg2[1]<lecturesDone || (msg2[1] == lecturesDone && status.MPI_SOURCE < tid) )
+				if(msg2[1]<lecturesDone || (msg2[1] == lecturesDone && status.MPI_SOURCE < tid) ) {
 					MPI_Send(&msg1, 1, MPI_INT, status.MPI_SOURCE, RESPONSE_TAG, MPI_COMM_WORLD );
+					cout<<tid<<": Send response to "<<status.MPI_SOURCE<<endl;
+				}
 			}
 			else if(msg2[0]!=myRoom){
 				// odeślij sygnał wolny -1
 				msg1 = -1;
 				MPI_Send(&msg1, 1, MPI_INT, status.MPI_SOURCE, RESPONSE_TAG, MPI_COMM_WORLD );
+				cout<<tid<<": Send response to "<<status.MPI_SOURCE<<endl;
 			}
 			
 			// dodaj do kolejki
@@ -140,10 +158,11 @@ int main(int argc, char **argv)
 		
 		if(flag){
 			responses.insert(status.MPI_SOURCE);
+			cout<<tid<<": RESPONSE"<<endl;
 		}
 		
 		// ODBIOR RELEASOW
-		MPI_Irecv(msg5, 1, MPI_INT, MPI_ANY_SOURCE, RELEASE_TAG, MPI_COMM_WORLD, &request);
+		MPI_Irecv(msg5, 5, MPI_INT, MPI_ANY_SOURCE, RELEASE_TAG, MPI_COMM_WORLD, &request);
 		//printf("Otrzymalem %d %d od %d, WARTOSC = %d\n", msg[0], msg[1], status.MPI_SOURCE, msg[2]);
 		MPI_Test(&request, &flag, &status);
 		
