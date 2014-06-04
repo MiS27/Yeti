@@ -7,6 +7,7 @@
 #include <queue>
 #include <cstdlib>
 #include <iostream>
+#include <unistd.h>
 #define RESPONSE_TAG 100
 #define	REQUEST_MASTER_TAG 101
 #define	REQUEST_ROOM_TAG 102
@@ -47,6 +48,7 @@ int main(int argc, char **argv)
 
 	cout<<"Id: "<<tid<<" from "<<size<<endl;
 	enum {vacant, gettingMaster, gettingRoom, lecture, meditate} stan;
+	stan = vacant;
 	int myMaster=-1, myRoom=-1;
 	long lectureEnd;
     
@@ -57,7 +59,7 @@ int main(int argc, char **argv)
 		
 	srand(time(NULL)+tid);
 	while(1){
-	
+		sleep(1);	
 		
 		switch(stan){
 			case vacant:
@@ -102,6 +104,8 @@ int main(int argc, char **argv)
 					msg5[0]=1;
 					msg5[1]=myRoom;
 					msg5[2]=lecturesDone;
+					myRoom=-1;
+					myMaster=-1;
 					for(int i=0; i<size; i++)
 						if(i!=tid)
 							MPI_Send(&msg5, 5, MPI_INT, i, RELEASE_TAG, MPI_COMM_WORLD );
@@ -145,15 +149,12 @@ int main(int argc, char **argv)
 			// dodaj do kolejki
 			roomsQ[msg2[0]].insert(P(msg2[1], status.MPI_SOURCE));
 
-//			MPI_Send( msg, 3, MPI_INT, (tid+1)%size, MSG_TAG, MPI_COMM_WORLD );
-			//printf("Wyslalem %d %d, WARTOSC = %d\n", msg[0], msg[1], msg[2]);
 		}
 		
 		
 		
 		// ODBIOR RESPONSOW
 		MPI_Irecv(&msg1, 1, MPI_INT, MPI_ANY_SOURCE, RESPONSE_TAG, MPI_COMM_WORLD, &request);
-		//printf("Otrzymalem %d %d od %d, WARTOSC = %d\n", msg[0], msg[1], status.MPI_SOURCE, msg[2]);
 		MPI_Test(&request, &flag, &status);
 		
 		if(flag){
@@ -163,12 +164,11 @@ int main(int argc, char **argv)
 		
 		// ODBIOR RELEASOW
 		MPI_Irecv(msg5, 5, MPI_INT, MPI_ANY_SOURCE, RELEASE_TAG, MPI_COMM_WORLD, &request);
-		//printf("Otrzymalem %d %d od %d, WARTOSC = %d\n", msg[0], msg[1], status.MPI_SOURCE, msg[2]);
 		MPI_Test(&request, &flag, &status);
 		
 		if(flag){
 			if(msg5[0]==1) { //if room
-				if(stan==gettingRoom)
+				if(stan==gettingRoom && msg5[1]==myRoom)
 					responses.insert(status.MPI_SOURCE);
 				// usuwanie z kolejki:, może się przydać timestamp
 				roomsQ[msg5[0]].erase(P(msg5[2],status.MPI_SOURCE));
