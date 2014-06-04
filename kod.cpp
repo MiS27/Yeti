@@ -11,7 +11,8 @@
 #define RESPONSE_TAG 100
 #define	REQUEST_MASTER_TAG 101
 #define	REQUEST_ROOM_TAG 102
-#define RELEASE_TAG 103
+#define RELEASE_ROOM_TAG 103
+#define RELEASE_MASTER_TAG 104
 
 using namespace std;
 
@@ -52,9 +53,12 @@ int main(int argc, char **argv)
 	int myMaster=-1, myRoom=-1;
 	long lectureEnd;
     
+	/*
 	int msg2[2];	// <zasób><timestamp>
 	int msg1;
 	int msg5[5];	// <0 Master/1 Room><zasób><timestamp><moc><version>
+	*/
+	int msg4[4];	// <zasób><timestamp><moc><version>
 		
 		
 	srand(time(NULL)+tid);
@@ -69,11 +73,11 @@ int main(int argc, char **argv)
 				myRoom = rand()%roomsNum;
 				roomsQ[myRoom].insert(P(lecturesDone, tid));
 				cout<<tid<<": MyRoom: "<<myRoom<<endl;
-				msg2[0]=myRoom;
-				msg2[1]=lecturesDone;
+				msg4[0]=myRoom;
+				msg4[1]=lecturesDone;
 				for(int i=0; i<size; i++)
 					if(i!=tid)
-						MPI_Send(&msg2, 2, MPI_INT, i, REQUEST_ROOM_TAG, MPI_COMM_WORLD );
+						MPI_Send(&msg4, 4, MPI_INT, i, REQUEST_ROOM_TAG, MPI_COMM_WORLD );
 
 				stan=gettingRoom;
 				break;
@@ -101,14 +105,13 @@ int main(int argc, char **argv)
 				if(time(NULL)>=lectureEnd) {
 					cout<<tid<<": lecture done room:"<<myRoom<<endl;
 					roomsQ[myRoom].erase(P(myRoom,lecturesDone));
-					msg5[0]=1;
-					msg5[1]=myRoom;
-					msg5[2]=lecturesDone;
+					msg4[0]=myRoom;
+					msg4[1]=lecturesDone;
 					myRoom=-1;
 					myMaster=-1;
 					for(int i=0; i<size; i++)
 						if(i!=tid)
-							MPI_Send(&msg5, 5, MPI_INT, i, RELEASE_TAG, MPI_COMM_WORLD );
+							MPI_Send(&msg4, 4, MPI_INT, i, RELEASE_ROOM_TAG, MPI_COMM_WORLD );
 					lecturesDone++;
 					stan=vacant;
 				}
@@ -120,36 +123,56 @@ int main(int argc, char **argv)
 		
 		
 		// OBSLUGA REQUESTA
-		MPI_Irecv(msg2, 2, MPI_INT, MPI_ANY_SOURCE, REQUEST_ROOM_TAG, MPI_COMM_WORLD, &request);
+		if(flag!=0) {
+			MPI_Irecv(msg4, 4, MPI_INT, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &request);
+			flag=0;
+		}
 		//printf("Otrzymalem %d %d od %d, WARTOSC = %d\n", msg[0], msg[1], status.MPI_SOURCE, msg[2]);
 		MPI_Test(&request, &flag, &status);
 		
 		if(flag){				
-			cout<<tid<<": REQUEST from "<<status.MPI_SOURCE<<" about "<<msg2[0]<<" "<<msg2[1]<<endl;
-			if(msg2[0]==myRoom && stan==gettingRoom){
-				// odeślij znacznik czasowy
-				//jeżeli tamten lepszy, to sygnał wolny -1
-				//jeżeli tamten gorszy, to ingnore
-				//ew. tablice
-				//msg1 = lecturesDone;
-				//MPI_Send(&msg1, 1, MPI_INT, status.MPI_SOURCE, RESPONSE_TAG, MPI_COMM_WORLD );
-				msg1=-1;
-				if(msg2[1]<lecturesDone || (msg2[1] == lecturesDone && status.MPI_SOURCE < tid) ) {
-					MPI_Send(&msg1, 1, MPI_INT, status.MPI_SOURCE, RESPONSE_TAG, MPI_COMM_WORLD );
-					cout<<tid<<": Send response to "<<status.MPI_SOURCE<<endl;
-				}
+			switch(status.MPI_TAG) {
+				case REQUEST_ROOM_TAG:
+					cout<<tid<<": REQUEST from "<<status.MPI_SOURCE<<" about "<<msg4[0]<<" "<<msg4[1]<<endl;
+					if(msg4[0]==myRoom && stan==gettingRoom){
+						// odeślij znacznik czasowy
+						//jeżeli tamten lepszy, to sygnał wolny -1
+						//jeżeli tamten gorszy, to ingnore
+						//ew. tablice
+						//msg1 = lecturesDone;
+						//MPI_Send(&msg1, 1, MPI_INT, status.MPI_SOURCE, RESPONSE_TAG, MPI_COMM_WORLD );
+						msg4[0]=-1;
+						if(msg4[1]<lecturesDone || (msg4[1] == lecturesDone && status.MPI_SOURCE < tid) ) {
+							MPI_Send(&msg4, 4, MPI_INT, status.MPI_SOURCE, RESPONSE_TAG, MPI_COMM_WORLD );
+							cout<<tid<<": Send response to "<<status.MPI_SOURCE<<endl;
+						}
+					}
+					else if(msg4[0]!=myRoom){
+						// odeślij sygnał wolny -1
+						msg4[0] = -1;
+						MPI_Send(&msg4, 4, MPI_INT, status.MPI_SOURCE, RESPONSE_TAG, MPI_COMM_WORLD );
+						cout<<tid<<": Send response to "<<status.MPI_SOURCE<<endl;
+					}
+					
+					// dodaj do kolejki
+					roomsQ[msg4[0]].insert(P(msg4[1], status.MPI_SOURCE));
+				break;
+				case RESPONSE_TAG:
+					responses.insert(status.MPI_SOURCE);
+					cout<<tid<<": RESPONSE"<<endl;
+				break;
+				case RELEASE_ROOM_TAG:
+					if(stan==gettingRoom && msg4[0]==myRoom)
+						responses.insert(status.MPI_SOURCE);
+					// usuwanie z kolejki:, może się przydać timestamp
+					roomsQ[msg4[0]].erase(P(msg4[1],status.MPI_SOURCE));
+				break;
+
 			}
-			else if(msg2[0]!=myRoom){
-				// odeślij sygnał wolny -1
-				msg1 = -1;
-				MPI_Send(&msg1, 1, MPI_INT, status.MPI_SOURCE, RESPONSE_TAG, MPI_COMM_WORLD );
-				cout<<tid<<": Send response to "<<status.MPI_SOURCE<<endl;
-			}
-			
-			// dodaj do kolejki
-			roomsQ[msg2[0]].insert(P(msg2[1], status.MPI_SOURCE));
+			flag=-1;
 
 		}
+			/*
 		
 		
 		
@@ -174,6 +197,7 @@ int main(int argc, char **argv)
 				roomsQ[msg5[0]].erase(P(msg5[2],status.MPI_SOURCE));
 			}
 		}
+		*/
 		
 
 	}
