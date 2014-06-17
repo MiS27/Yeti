@@ -19,21 +19,40 @@ using namespace std;
 
 typedef pair<int, int> P;	// <timestamp><tid>
 
-
-int getMaster();
-int getRoom();
-
 int main(int argc, char **argv)
 {
-	int mastersNum, roomsNum;
-	mastersNum = 5;
-	roomsNum = 5;
+	int mastersNum, roomsNum, projectorsNum;
+
+	cout << "Podaj kolejno: liczbę mistrzów, liczbę sal, liczbę projektorów. Następnie podaj ':' i wypisz moce kolejnych mistrzów, bądź 'x' i podaj jedną moc dla wszystkich" << endl;
+	cin >> mastersNum >> roomsNum >> projectorsNum;
+	roomsNum = min(roomsNum,projectorsNum);
+
+	int tmp;
+	char znak;
+	cin >> znak;
+
+	vector<int> mastersPowerInit;
+
+	if(znak=='x'){
+		cin >> tmp;
+		for(int i=0;i<mastersNum;i++)
+			mastersPowerInit.push_back(tmp);
+	}
+	else if(znak==':'){
+		for(int i=0;i<mastersNum;i++){
+			cin >> tmp;
+			mastersPowerInit.push_back(tmp);
+		}
+	}
+
 	vector< set<P, greater<P> > > mastersQ(mastersNum, set<P, greater<P> >());
 	vector< set<P, greater<P> > > roomsQ(roomsNum, set<P, greater<P> >());
 
 	set<int> responses;
 
-	vector< P > mastersPower(mastersNum, P(50, 0) );//P<power,version>
+	vector< P > mastersPower(mastersNum, P(20, 0) );//P<power,version>
+	for(int i=0;i<mastersNum;i++)
+		mastersPower[i].first=mastersPowerInit[i];
 	int lecturesDone = 0;
 	
 	
@@ -43,23 +62,18 @@ int main(int argc, char **argv)
 	int flag=-1;
 
 	MPI_Init(&argc, &argv); //Musi być w każdym programie na początku
-	//printf("Checking!\n");
 	MPI_Comm_size( MPI_COMM_WORLD, &size );
 	MPI_Comm_rank( MPI_COMM_WORLD, &tid );
-	//printf("My id is %d from %d\n",tid, size);
 
 	cout<<"Id: "<<tid<<" from "<<size<<endl;
+	
+	
 	enum {vacant, gettingMaster, gettingRoom, lecture, meditate} stan;
 	stan = vacant;
 	int myMaster=-1, myRoom=-1;
 	long lectureEnd;
 	long meditateEnd;
     
-	/*
-	int msg2[2];	// <zasób><timestamp>
-	int msg1;
-	int msg5[5];	// <0 Master/1 Room><zasób><timestamp><moc><version>
-	*/
 	int msg4[4] = {0};	// <zasób><timestamp><moc><version>
 	int msg[4] = {0};	// <zasób><timestamp><moc><version>
 		
@@ -268,7 +282,7 @@ int main(int argc, char **argv)
 				break;
 				case RELEASE_MASTER_TAG:
 					gettimeofday(&tv, NULL);
-					cout<<tv.tv_sec*1000000+tv.tv_usec<<" # "<<tid<<": RELEASE_MASTER_TAG from: " << status.MPI_SOURCE << "  (power " <<msg[2]<<" v"<< msg[3]<< ")"<<endl;
+					cout<<tv.tv_sec*1000000+tv.tv_usec<<" # "<<tid<<": RELEASE_MASTER_TAG from: " << status.MPI_SOURCE << "  (power " <<msg4[2]<<" v"<< msg4[3]<< ")"<<endl;
 					if(stan==gettingMaster && msg4[0]==myMaster)
 						responses.insert(status.MPI_SOURCE);
 					// usuwanie z kolejki:
