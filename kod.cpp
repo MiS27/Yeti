@@ -9,11 +9,12 @@
 #include <iostream>
 #include <unistd.h>
 #include <sys/time.h>
-#define RESPONSE_TAG 100
+#define	REQUEST_ROOM_TAG 100
 #define	REQUEST_MASTER_TAG 101
-#define	REQUEST_ROOM_TAG 102
-#define RELEASE_ROOM_TAG 103
-#define RELEASE_MASTER_TAG 104
+#define RELEASE_ROOM_TAG 102
+#define RELEASE_MASTER_TAG 103
+#define RESPONSE_ROOM_TAG 104
+#define RESPONSE_MASTER_TAG 105
 
 using namespace std;
 
@@ -21,6 +22,8 @@ typedef pair<int, int> P;	// <timestamp><tid>
 
 int main(int argc, char **argv)
 {
+	bool inserted;
+	P front;
 	int mastersNum, roomsNum, projectorsNum;
 
 	//cout << "Podaj kolejno: liczbę mistrzów, liczbę sal, liczbę projektorów. Następnie podaj ':' i wypisz moce kolejnych mistrzów, bądź 'x' i podaj jedną moc dla wszystkich" << endl;
@@ -98,6 +101,7 @@ int main(int argc, char **argv)
 		
 		switch(stan){
 			case vacant:				
+				lecturesDone++;
 				shortestQ.clear();
 				shortestQ.push_back(0);
 				for(int i=1;i<mastersNum;i++) {
@@ -125,7 +129,10 @@ int main(int argc, char **argv)
 				stan=gettingMaster;
 				break;
 			case gettingMaster:
-				if(responses.size() == size-1) {
+				front = *mastersQ[myMaster].rbegin();
+				//if(tid==1)
+					//cout<<front.first<<" "<<lecturesDone<<" "<<front.second<<" "<<tid<<endl;
+				if(responses.size() == size-1 && front.first == lecturesDone && front.second == tid) {
 					responses.clear();
 					shortestQ.clear();
 					shortestQ.push_back(0);
@@ -153,9 +160,13 @@ int main(int argc, char **argv)
 
 					stan=gettingRoom;
 				}
+				else {
+					//cout<<tid<<": waiting "<<responses.size()<<endl;
+				}
 				break;
 			case gettingRoom:
-				if(responses.size() == size-1) {
+				front = *roomsQ[myRoom].rbegin();
+				if(responses.size() == size-1 && front.first == lecturesDone && front.second == tid) {
 					responses.clear();
 					lectureEnd=time(NULL) + rand()%3;
 					stan=lecture;
@@ -167,7 +178,8 @@ int main(int argc, char **argv)
 				if(time(NULL)>=lectureEnd) {
 					gettimeofday(&tv, NULL);
 					cout<<tv.tv_sec*1000000+tv.tv_usec<<" # "<<tid<<": lecture STOP master: " << myMaster << "  room:"<<myRoom<<endl;
-					roomsQ[myRoom].erase(P(myRoom,lecturesDone));
+					roomsQ[myRoom].erase(P(lecturesDone,tid));
+					mastersQ[myMaster].erase(P(lecturesDone,tid));
 					msg[0]=myRoom;
 					msg[1]=lecturesDone;
 					myRoom=-1;
@@ -177,7 +189,6 @@ int main(int argc, char **argv)
 							gettimeofday(&tv, NULL);
 							cout<<tv.tv_sec*1000000+tv.tv_usec<<" # "<<tid<<": send RELESAE_ROOM_TAG  to:"<<i<<endl;
 						}
-					lecturesDone++;
 					mastersPower[myMaster].first--;
 					if(mastersPower[myMaster].first > 0) {
 						//mastersPower[myMaster].first--;
@@ -247,47 +258,62 @@ int main(int argc, char **argv)
 				case REQUEST_ROOM_TAG:
 					gettimeofday(&tv, NULL);
 					cout<<tv.tv_sec*1000000+tv.tv_usec<<" # "<<tid<<": REQUEST from "<<status.MPI_SOURCE<<" about "<<msg4[0]<<" "<<msg4[1]<<endl;
+					// dodaj do kolejki
+					roomsQ[msg4[0]].insert(P(msg4[1], status.MPI_SOURCE));
 					if(msg4[0]==myRoom && stan==gettingRoom){
 						//jeżeli tamten lepszy, to wyślij sygnał wolny
 						//jeżeli tamten gorszy, to ingnoruj
 						if(msg4[1]<lecturesDone || (msg4[1] == lecturesDone && status.MPI_SOURCE < tid) ) {
-							MPI_Send(&msg4, 4, MPI_INT, status.MPI_SOURCE, RESPONSE_TAG, MPI_COMM_WORLD );
+							MPI_Send(&msg4, 4, MPI_INT, status.MPI_SOURCE, RESPONSE_ROOM_TAG, MPI_COMM_WORLD );
 							gettimeofday(&tv, NULL);
 							cout<<tv.tv_sec*1000000+tv.tv_usec<<" # "<<tid<<": Send response to "<<status.MPI_SOURCE<<endl;
 						}
 					}
 					else if(msg4[0]!=myRoom){
 						// odeślij sygnał wolny
-						MPI_Send(&msg4, 4, MPI_INT, status.MPI_SOURCE, RESPONSE_TAG, MPI_COMM_WORLD );
+						MPI_Send(&msg4, 4, MPI_INT, status.MPI_SOURCE, RESPONSE_ROOM_TAG, MPI_COMM_WORLD );
 						gettimeofday(&tv, NULL);
 						cout<<tv.tv_sec*1000000+tv.tv_usec<<" # "<<tid<<": Send response to "<<status.MPI_SOURCE<<endl;
 					}
 					
-					// dodaj do kolejki
-					roomsQ[msg4[0]].insert(P(msg4[1], status.MPI_SOURCE));
 				break;
 				case REQUEST_MASTER_TAG:
 					gettimeofday(&tv, NULL);
 					cout<<tv.tv_sec*1000000+tv.tv_usec<<" # "<<tid<<": REQUEST from "<<status.MPI_SOURCE<<" about "<<msg4[0]<<" "<<msg4[1]<<endl;
+					mastersQ[msg4[0]].insert(P(msg4[1], status.MPI_SOURCE));
+					//if(tid==0)
+						//cout<<"P "<<msg4[1]<<" "<<status.MPI_SOURCE<<endl;
 					if(msg4[0]==myMaster && stan==gettingMaster){
 						if(msg4[1]<lecturesDone || (msg4[1] == lecturesDone && status.MPI_SOURCE < tid) ) {
-							MPI_Send(&msg4, 4, MPI_INT, status.MPI_SOURCE, RESPONSE_TAG, MPI_COMM_WORLD );
+							MPI_Send(&msg4, 4, MPI_INT, status.MPI_SOURCE, RESPONSE_MASTER_TAG, MPI_COMM_WORLD );
 							gettimeofday(&tv, NULL);
 							cout<<tv.tv_sec*1000000+tv.tv_usec<<" # "<<tid<<": Send response to "<<status.MPI_SOURCE<<endl;
 						}
 					}
 					else if(msg4[0]!=myMaster){
-						MPI_Send(&msg4, 4, MPI_INT, status.MPI_SOURCE, RESPONSE_TAG, MPI_COMM_WORLD );
+						MPI_Send(&msg4, 4, MPI_INT, status.MPI_SOURCE, RESPONSE_MASTER_TAG, MPI_COMM_WORLD );
 						gettimeofday(&tv, NULL);
 						cout<<tv.tv_sec*1000000+tv.tv_usec<<" # "<<tid<<": Send response to "<<status.MPI_SOURCE<<endl;
 					}
 					
-					mastersQ[msg4[0]].insert(P(msg4[1], status.MPI_SOURCE));
 				break;
-				case RESPONSE_TAG:
-					responses.insert(status.MPI_SOURCE);
+				case RESPONSE_ROOM_TAG:
+					inserted = false;
+					if(stan == gettingRoom && lecturesDone == msg4[1]) {
+						responses.insert(status.MPI_SOURCE);
+						inserted = true;
+					}
 					gettimeofday(&tv, NULL);
-					cout<<tv.tv_sec*1000000+tv.tv_usec<<" # "<<tid<<": RESPONSE"<<endl;
+					cout<<tv.tv_sec*1000000+tv.tv_usec<<" # "<<tid<<": RESPONSE_ROOM from "<<status.MPI_SOURCE<<" about "<<msg4[0]<<" "<<msg4[1]<<" inserted "<<inserted<<endl;
+				break;
+				case RESPONSE_MASTER_TAG:
+					inserted = false;
+					if(stan == gettingMaster && lecturesDone == msg4[1]) {
+						responses.insert(status.MPI_SOURCE);
+						inserted = true;
+					}
+					gettimeofday(&tv, NULL);
+					cout<<tv.tv_sec*1000000+tv.tv_usec<<" # "<<tid<<": RESPONSE_MASTER from "<<status.MPI_SOURCE<<" about "<<msg4[0]<<" "<<msg4[1]<<" inserted "<<inserted<<endl;
 				break;
 				case RELEASE_ROOM_TAG:
 					gettimeofday(&tv, NULL);
@@ -298,10 +324,13 @@ int main(int argc, char **argv)
 					roomsQ[msg4[0]].erase(P(msg4[1],status.MPI_SOURCE));
 				break;
 				case RELEASE_MASTER_TAG:
+					inserted = false;
 					gettimeofday(&tv, NULL);
-					cout<<tv.tv_sec*1000000+tv.tv_usec<<" # "<<tid<<": RELEASE_MASTER_TAG from: " << status.MPI_SOURCE << "  (power " <<msg4[2]<<" v"<< msg4[3]<< ")"<<endl;
-					if(stan==gettingMaster && msg4[0]==myMaster)
+					if(stan==gettingMaster && msg4[0]==myMaster) {
 						responses.insert(status.MPI_SOURCE);
+						inserted = true;
+					}
+					cout<<tv.tv_sec*1000000+tv.tv_usec<<" # "<<tid<<": RELEASE_MASTER_TAG from: " << status.MPI_SOURCE << "  (power " <<msg4[2]<<" v"<< msg4[3]<< ") inserted "<<inserted<<endl;
 					// usuwanie z kolejki:
 					mastersQ[msg4[0]].erase(P(msg4[1],status.MPI_SOURCE));
 					if(mastersPower[msg4[0]].second<msg4[3]) {
