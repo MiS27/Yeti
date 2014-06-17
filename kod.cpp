@@ -129,12 +129,12 @@ int main(int argc, char **argv)
 					responses.clear();
 					shortestQ.clear();
 					shortestQ.push_back(0);
-					for(int i=1;i<mastersNum;i++) {
-						if(mastersQ[shortestQ[0]].size() > mastersQ[i].size()) {
+					for(int i=1;i<roomsNum;i++) {
+						if(roomsQ[shortestQ[0]].size() > roomsQ[i].size()) {
 							shortestQ.clear();
 							shortestQ.push_back(i);
 						}
-						else if(mastersQ[i].size() == mastersQ[shortestQ[0]].size()) {
+						else if(roomsQ[i].size() == roomsQ[shortestQ[0]].size()) {
 							shortestQ.push_back(i);
 						}
 					}
