@@ -1,4 +1,3 @@
-lab-net-1
-lab-net-2
-lab-net-3
-lab-net-4
+lab-net-5
+lab-net-6
+lab-net-9
