@@ -33,16 +33,23 @@ int main(int argc, char **argv)
 	projectorsNum = atoi(argv[1]);
 	roomsNum = atoi(argv[2]);
 	vector< P > mastersPower;
+	int * maxPowers = new int[mastersNum];
 	if(atoi(argv[4]) == -1) {
-		for (int i=0; i<mastersNum; i++)
-			mastersPower.push_back(P(atoi(argv[5]) + rand()%(atoi(argv[6]) - atoi(argv[5])), 0));
+		for (int i=0; i<mastersNum; i++) {
+			maxPowers[i] = atoi(argv[5]) + rand()%(atoi(argv[6]) - atoi(argv[5]));
+			mastersPower.push_back(P(maxPowers[i], 0));
+		}
 	}
 	else if(argc == 5) {
 		mastersPower.assign(mastersNum, P(atoi(argv[4]), 0));//P<power,version>
+		for (int i=0; i<mastersNum; i++)
+			maxPowers[i] = atoi(argv[4]);
 	}
 	else if(argc == 4 + mastersNum) {
-		for (int i=0; i<mastersNum; i++)
+		for (int i=0; i<mastersNum; i++) {
 			mastersPower.push_back(P(atoi(argv[4 + i]), 0 ));
+			maxPowers[i] = atoi(argv[4 + i]);
+		}
 	}
 	else {
 		cout<<"Agrumenty: <liczba pokoi><liczba projektorów><liczba mistrzów><-1  = losowanie mocy; lista mocy mistrzów; moc dla wszystkich mistrzów><jeśli losowanie, to lower bound><jeśli losowanie, to upperbound>"<<endl;
@@ -190,7 +197,7 @@ int main(int argc, char **argv)
 			case meditate:
 				// TODO // Hmm.. chyba gotowe , nie? Po co to TODO?
 				if(time(NULL)>=meditateEnd) {
-						mastersPower[myMaster].first=50;
+						mastersPower[myMaster].first = maxPowers[myMaster];
 						mastersPower[myMaster].second++;
 						msg[0]=myMaster;
 						msg[1]=lecturesDone;
