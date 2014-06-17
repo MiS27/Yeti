@@ -104,7 +104,7 @@ int main(int argc, char **argv)
 						min_size = mastersQ[i].size();
 						min_index = i;
 					}
-					else if(mastersQ[i].size() == min_size && rand%2 == 0) {
+					else if(mastersQ[i].size() == min_size && rand()%2 == 0) {
 						min_size = mastersQ[i].size();
 						min_index = i;
 					}
