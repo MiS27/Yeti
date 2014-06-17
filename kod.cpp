@@ -23,36 +23,39 @@ int main(int argc, char **argv)
 {
 	int mastersNum, roomsNum, projectorsNum;
 
-	cout << "Podaj kolejno: liczbę mistrzów, liczbę sal, liczbę projektorów. Następnie podaj ':' i wypisz moce kolejnych mistrzów, bądź 'x' i podaj jedną moc dla wszystkich" << endl;
-	cin >> mastersNum >> roomsNum >> projectorsNum;
+	//cout << "Podaj kolejno: liczbę mistrzów, liczbę sal, liczbę projektorów. Następnie podaj ':' i wypisz moce kolejnych mistrzów, bądź 'x' i podaj jedną moc dla wszystkich" << endl;
+	//cin >> mastersNum >> roomsNum >> projectorsNum;
+	if(argc < 5) {
+		cout<<"Agrumenty: <liczba pokoi><liczba projektorów><liczba mistrzów><-1  = losowanie mocy; lista mocy mistrzów; moc dla wszystkich mistrzów><jeśli losowanie, to lower bound><jeśli losowanie, to upperbound>"<<endl;
+		return -1;
+	}
+	mastersNum = atoi(argv[3]);
+	projectorsNum = atoi(argv[1]);
+	roomsNum = atoi(argv[2]);
+	vector< P > mastersPower;
+	if(atoi(argv[4]) == -1) {
+		for (int i=0; i<mastersNum; i++)
+			mastersPower.push_back(P(atoi(argv[5]) + rand()%(atoi(argv[6]) - atoi(argv[5])), 0));
+	}
+	else if(argc == 5) {
+		mastersPower.assign(mastersNum, P(atoi(argv[4]), 0));//P<power,version>
+	}
+	else if(argc == 4 + mastersNum) {
+		for (int i=0; i<mastersNum; i++)
+			mastersPower.push_back(P(atoi(argv[5 + i]), 0 ));
+	}
+	else {
+		cout<<"Agrumenty: <liczba pokoi><liczba projektorów><liczba mistrzów><-1  = losowanie mocy; lista mocy mistrzów; moc dla wszystkich mistrzów><jeśli losowanie, to lower bound><jeśli losowanie, to upperbound>"<<endl;
+		return -1;
+	}
+
+	cout<<"mastersNum "<<mastersNum<<" projectorsNum "<<projectorsNum<<" roomsNum "<<roomsNum<<endl;
 	roomsNum = min(roomsNum,projectorsNum);
-
-	int tmp;
-	char znak;
-	cin >> znak;
-
-	vector<int> mastersPowerInit;
-
-	if(znak=='x'){
-		cin >> tmp;
-		for(int i=0;i<mastersNum;i++)
-			mastersPowerInit.push_back(tmp);
-	}
-	else if(znak==':'){
-		for(int i=0;i<mastersNum;i++){
-			cin >> tmp;
-			mastersPowerInit.push_back(tmp);
-		}
-	}
 
 	vector< set<P, greater<P> > > mastersQ(mastersNum, set<P, greater<P> >());
 	vector< set<P, greater<P> > > roomsQ(roomsNum, set<P, greater<P> >());
 
 	set<int> responses;
-
-	vector< P > mastersPower(mastersNum, P(20, 0) );//P<power,version>
-	for(int i=0;i<mastersNum;i++)
-		mastersPower[i].first=mastersPowerInit[i];
 	int lecturesDone = 0;
 	
 	
@@ -163,7 +166,7 @@ int main(int argc, char **argv)
 					lecturesDone++;
 					mastersPower[myMaster].first--;
 					if(mastersPower[myMaster].first > 0) {
-						mastersPower[myMaster].first--;
+						//mastersPower[myMaster].first--;
 						mastersPower[myMaster].second++;
 						msg[0]=myMaster;
 						msg[1]=lecturesDone;
