@@ -99,11 +99,16 @@ int main(int argc, char **argv)
 			case vacant:				
 				min_size=100000;
 				min_index=0;
-				for(int i=0;i<mastersNum;i++)
+				for(int i=0;i<mastersNum;i++) {
 					if(mastersQ[i].size()<min_size) {
 						min_size = mastersQ[i].size();
 						min_index = i;
 					}
+					else if(mastersQ[i].size() == min_size && rand%2 == 0) {
+						min_size = mastersQ[i].size();
+						min_index = i;
+					}
+				}
 				myMaster=min_index;				
 				
 				mastersQ[myMaster].insert(P(lecturesDone, tid));
