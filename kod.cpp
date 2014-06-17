@@ -83,6 +83,7 @@ int main(int argc, char **argv)
 	int myMaster=-1, myRoom=-1;
 	long lectureEnd;
 	long meditateEnd;
+	vector<int> shortestQ;
     
 	int msg4[4] = {0};	// <zasób><timestamp><moc><version>
 	int msg[4] = {0};	// <zasób><timestamp><moc><version>
@@ -97,19 +98,18 @@ int main(int argc, char **argv)
 		
 		switch(stan){
 			case vacant:				
-				min_size=100000;
-				min_index=0;
-				for(int i=0;i<mastersNum;i++) {
-					if(mastersQ[i].size()<min_size) {
-						min_size = mastersQ[i].size();
-						min_index = i;
+				shortestQ.clear();
+				shortestQ.push_back(0);
+				for(int i=1;i<mastersNum;i++) {
+					if(mastersQ[shortestQ[0]].size() > mastersQ[i].size()) {
+						shortestQ.clear();
+						shortestQ.push_back(i);
 					}
-					else if(mastersQ[i].size() == min_size && rand()%2 == 0) {
-						min_size = mastersQ[i].size();
-						min_index = i;
+					else if(mastersQ[i].size() == mastersQ[shortestQ[0]].size()) {
+						shortestQ.push_back(i);
 					}
 				}
-				myMaster=min_index;				
+				myMaster=shortestQ[rand()%shortestQ.size()];
 				
 				mastersQ[myMaster].insert(P(lecturesDone, tid));
 				gettimeofday(&tv, NULL);
@@ -127,16 +127,18 @@ int main(int argc, char **argv)
 			case gettingMaster:
 				if(responses.size() == size-1) {
 					responses.clear();
-					
-					min_size=100000;
-					min_index=0;
-					for(int i=0;i<roomsNum;i++)
-						if(roomsQ[i].size()<min_size) {
-							min_size = roomsQ[i].size();
-							min_index = i;
+					shortestQ.clear();
+					shortestQ.push_back(0);
+					for(int i=1;i<mastersNum;i++) {
+						if(mastersQ[shortestQ[0]].size() > mastersQ[i].size()) {
+							shortestQ.clear();
+							shortestQ.push_back(i);
 						}
-					myRoom=min_index;				
-
+						else if(mastersQ[i].size() == mastersQ[shortestQ[0]].size()) {
+							shortestQ.push_back(i);
+						}
+					}
+					myRoom=shortestQ[rand()%shortestQ.size()];
 					roomsQ[myRoom].insert(P(lecturesDone, tid));
 					gettimeofday(&tv, NULL);
 					cout<<tv.tv_sec*1000000+tv.tv_usec<<" # "<<tid<<": waiting for MyRoom: "<<myRoom<<endl;
