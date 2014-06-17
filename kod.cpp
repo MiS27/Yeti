@@ -42,7 +42,7 @@ int main(int argc, char **argv)
 	}
 	else if(argc == 4 + mastersNum) {
 		for (int i=0; i<mastersNum; i++)
-			mastersPower.push_back(P(atoi(argv[5 + i]), 0 ));
+			mastersPower.push_back(P(atoi(argv[4 + i]), 0 ));
 	}
 	else {
 		cout<<"Agrumenty: <liczba pokoi><liczba projektorów><liczba mistrzów><-1  = losowanie mocy; lista mocy mistrzów; moc dla wszystkich mistrzów><jeśli losowanie, to lower bound><jeśli losowanie, to upperbound>"<<endl;
